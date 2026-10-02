@@ -23,6 +23,30 @@ The whole happy path:
 The workspace folder can be empty. The wizard asks where your repo checkout
 lives and symlinks it in. Details below if anything is unclear or breaks.
 
+### Or let Claude do steps 2 and 3
+
+After accepting the invite, paste this into Claude Code, started from any
+folder:
+
+```
+Install the agentic-dev-os Claude Code plugin for me and prepare a workspace.
+
+1. Check that git and jq are installed. If jq is missing, tell me how to install it for my OS.
+2. Check that I can reach the private repo: gh repo view rimakos/agentic-dev-os
+   (or git ls-remote https://github.com/rimakos/agentic-dev-os). If that fails, stop and tell me
+   to accept the GitHub invite or to run "! gh auth login".
+3. Run: claude plugin marketplace add rimakos/agentic-dev-os
+   then: claude plugin install agentic-dev-os@agentic-dev-os
+   then: claude plugin list, and confirm agentic-dev-os is installed and enabled.
+4. Ask me for my project name, then create ~/<project>-os (empty).
+5. Finish by telling me to quit this session, run: cd ~/<project>-os && claude
+   and then run /os-init there.
+```
+
+Two things stay with you: accepting the invite (and `gh auth login` if git is
+not signed in to GitHub), and restarting Claude from the new folder, since
+`/os-init` and the hooks only work in a session launched from there.
+
 ---
 
 ## Prerequisites
@@ -105,10 +129,10 @@ in `.claude/os-manifest.json`, so removal is clean.
 
 ## Part 3: what you run each ticket
 
-Read `wiki/index.md`, then `/ticket-impact` before any plan, implement (Claude
-delegates to subagents, main context stays clean), `/cross-repo-review` the
-diff, `/wrap` to close (files learnings, writes `log.md` last). The drift-check
-hook nags you next session if you skipped `/wrap`. Claude never commits. You do.
+Read `wiki/index.md`, then `/ticket-impact` before any plan, implement in the
+main session, `/cross-repo-review` the diff, `/wrap` to close (files learnings,
+writes `log.md` last). The drift-check hook nags you next session if you skipped
+`/wrap`. You commit: git writes ask for your approval first.
 
 Gotcha: always launch `claude` from the workspace root, never from inside the
 repo. The hooks resolve via `$CLAUDE_PROJECT_DIR`; run from inside the repo

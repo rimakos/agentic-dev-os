@@ -1,6 +1,6 @@
 # Setup: read me first
 
-This is a portable agentic dev OS: a Claude Code plugin (20 skills) plus a
+This is a portable agentic dev OS: a Claude Code plugin (13 skills) plus a
 workspace scaffold (the wiki + rules) that turns Claude into a disciplined,
 memory-keeping teammate across your repos. Every ticket runs the same loop:
 scope before planning, implement, review across repo boundaries, then write what
@@ -63,7 +63,7 @@ path in place of the repo:
 /plugin install agentic-dev-os@agentic-dev-os
 ```
 
-The 20 skills work immediately, current session included. No restart needed.
+The 13 skills work immediately, current session included. No restart needed.
 
 ---
 
@@ -82,17 +82,18 @@ It also asks which optional modules you want, y/n each:
   win (60-90% on git/ls/grep/build logs, needs Homebrew). Gotcha: two unrelated
   packages named rtk exist. After install, `rtk gain` must print token-savings
   analytics; otherwise you got the wrong one.
-- `caveman`: terse reply mode plus compressed subagents, cuts output tokens
-  roughly 75%. Skip it if terse replies annoy you.
+- `caveman`: terse reply mode. Off by default since 0.3.0: the core block
+  already keeps replies short, and caveman also compresses drafts and PR
+  comments.
 - `codegraph`: instant symbol/caller lookups instead of file scans. Skip unless
   you already have the binary: it is privately distributed, there is no brew
   formula, and the npm `codegraph` package is an unrelated name-squat.
 - `statusline`: model and context usage at the bottom of the terminal. Costs
   nothing, purely cosmetic.
-- plugin pack: superpowers (process discipline), context7 (live library docs),
-  playwright (browser automation for ticket testing).
-- `metrics`: two small TSVs on session health and PR cycle time, a few lines
-  per `/wrap`.
+- plugin pack: context7 (live library docs) and playwright (browser
+  automation for ticket testing).
+- `metrics`: small TSVs on session health, PR cycle time and how often each
+  skill fires, a few lines per `/wrap`.
 
 Then it analyzes the symlinked repos (tech and role from real signals like
 package.json, *.csproj, go.mod, git remotes, plus the seams between them) and

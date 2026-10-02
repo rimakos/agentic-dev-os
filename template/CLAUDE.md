@@ -1,54 +1,33 @@
 # Workspace
 
-This file is the entry point Claude loads for every session in this workspace.
-Copy it to your workspace root (the folder holding your repo checkouts and the
-`wiki/` directory), then edit the placeholders.
+Entry point Claude loads for every session in this workspace. Copy it to the workspace root (the
+folder holding your repo checkouts and `wiki/`), then edit it.
 
 @wiki/CLAUDE.md
 
-## Starting a ticket
+## A ticket
 
-1. Read `wiki/index.md` first, then drill into the linked repo/seam/feature pages.
-2. Run `/ticket-impact` before writing a plan or any code. It reads the wiki and
-   `os-config.yaml`, surfaces hidden scope, and (for repos that declare a
-   `rules_dir` in `os-config.yaml`) routes to that repo's own rules.
-3. For contract, schema, or multi-repo tickets, follow
-   `wiki/workflows/spec-driven-cross-repo-ticket.md`.
+1. `/ticket-impact` before a plan or code. It reads the wiki and `os-config.yaml`, surfaces hidden
+   scope, and routes to a repo's own rules when `os-config.yaml` declares a `rules_dir`.
+2. Do the work in the main session. Delegate only wide, independent tracks (a broad search,
+   parallel research).
+3. Contract, schema or multi-repo tickets follow `wiki/workflows/spec-driven-cross-repo-ticket.md`.
+4. `/wrap` at the end. It files what the session learned and writes `wiki/log.md` last; the
+   SessionStart hook warns the next session if that was skipped.
 
-## Ending a session
+## Boundaries
 
-Run `/wrap`. It patches corrections, files learnings to the wiki, updates the
-index, and appends `log.md` (written LAST). The SessionStart hook
-(`.claude/hooks/drift-check.sh`) warns the next session if `/wrap` was skipped.
+- The human does the git writes. `git add`, `commit`, `push`, `stash` and branch creation are set
+  to ask in `.claude/settings.json`; end code work with "Ready to commit: <files>".
+- Nothing is posted to the ticket tracker or a PR unless the human asks in that turn, because a
+  post is public and hard to take back.
+- Change only the repo the task names, and check its `git status` first.
 
-## Two memory layers (don't write the same fact to both)
+## Two memory layers
 
-- **The wiki (`wiki/`)** is the shared, human-curated record: topology, gotchas,
-  decisions, per-repo/seam knowledge. Team-facing. `/wrap`, `wiki-ingest`, and
-  `goal` write here. If two layers ever disagree, the wiki wins.
-- **Claude's own auto-memory** is a private, per-user store at
-  `~/.claude/projects/<workspace-slug>/memory/` indexed by `MEMORY.md` (one line
-  per memory). It holds build/run commands, debugging insights, and cross-session
-  patterns Claude discovers that aren't team knowledge. The slug is derived from
-  the workspace's absolute path, so it's automatically distinct per machine/repo.
+- The wiki (`wiki/`) is the shared team record: topology, gotchas, decisions. If the layers
+  disagree, the wiki wins.
+- Claude's auto-memory (`~/.claude/projects/<workspace-slug>/memory/`) holds private working notes
+  that are not team knowledge.
 
-Rule: durable team knowledge → wiki; Claude's discovered working notes →
-auto-memory. Pick one home per fact and `[[link]]` rather than duplicating.
-
-## Operating rules the flow assumes
-
-The full working rules (evidence ranking, verification before done, scope
-discipline, PR-by-SHA, no-duplication) live in `wiki/CLAUDE.md`. The ones that
-govern how work is executed, not just recorded:
-
-- **Never commit or push.** No `git add` / `commit` / `push` unless the human
-  explicitly says so in the current request. The agent scopes, implements,
-  reviews, and captures. The human integrates.
-- **Subagent-driven execution.** Delegate task implementation to spawned
-  subagents; the main agent orchestrates, reviews, and tracks state. Group
-  coupled tasks into one subagent; parallelize independent ones. After each task,
-  drift-check against the plan before continuing.
-- **Surgical changes.** Every changed line traces to the request. No drive-by
-  refactors, renames, or cleanups. Match existing style.
-- **Verify before done.** After multi-file changes, run build plus tests, report
-  results, then declare complete. A fix is not done because it compiles.
+Each fact has one home; link to it rather than copying it.

@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Portable agentic dev OS: ticket lifecycle skills + team knowledge wiki. Config-driven, domain-agnostic.",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "agentic-dev-os",
       "source": "./",
-      "description": "Install the full 20-skill set: the ticket lifecycle (ticket-impact, cross-repo review/test, pr-ticket-review, ticket-testing, seed-test-data, goal, wrap), wiki ops (wiki-ingest, wiki-lint), meta (skill-workshop, mcp-impact), the execution loop (operating-flow + task-intake, subagent-execute, verify-done, session-capture), and the OS lifecycle (os-init, os-doctor, os-remove)."
+      "description": "Install the 13-skill set: the ticket lifecycle (ticket-impact, cross-repo-review, pr-ticket-review, ticket-testing, seed-test-data, goal, wrap), wiki ops (wiki-ingest, wiki-lint), meta (skill-workshop), and the OS lifecycle (os-init, os-doctor, os-remove)."
     }
   ]
 }

@@ -27,7 +27,12 @@ Stand between "implementation finished" and "told the user it's done". Nothing i
 3. **Capture evidence.** Exact command + exact relevant output. Failures quoted verbatim, not paraphrased.
 4. **On FAIL**: report it plainly with the output. Do not soften ("mostly works"), do not silently fix-and-retry without saying so. Fix, then re-run the full criterion, then report both the failure and the fix.
 5. **On PASS**: state it without hedging, with the evidence line.
-6. **Emit the verdict block** and stop.
+6. **Holdout check.** If `spec-gate` created a holdout file for this task
+   (`<workspace>/holdouts/<feature-slug>.md`), dispatch a fresh subagent with
+   only the spec + holdout + built artifact to run the scenarios; record
+   per-scenario PASS/FAIL in `<feature-slug>-results.md`. Never run them
+   yourself if you carried the implementation context.
+7. **Emit the verdict block** and stop.
 
 ## Output template
 

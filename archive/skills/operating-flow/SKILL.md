@@ -33,6 +33,8 @@ Run the phases in order. Each phase has a standalone skill; invoke it if availab
 
 Restate the task in one sentence. State assumptions explicitly. If genuinely ambiguous, surface the interpretations and ask ONE question; do not run with a guess. Classify: question / change / plan-execution. Then define the done-criterion BEFORE touching code: a check that can pass or fail ("failing test then green", "build passes", "file X contains Y", "flow Z works end-to-end").
 
+Plan-execution with a spec/plan → run `spec-gate` before any implementation edit: independent critic grades the spec (blocking, iterate to PASS), holdout scenarios written now and hidden from the implementer.
+
 ### 2. Skill check
 
 Match the task to existing skills before any action, including clarifying questions:
@@ -58,7 +60,7 @@ Did the result match the plan? Did completing it change assumptions downstream t
 
 ### 5. Verify → `verify-done`
 
-Run the done-criterion from step 1. Exercise the real flow, not just typecheck. Report faithfully: failures quoted exact, skipped steps named, no hedging on success ("done and verified" only when it is).
+Run the done-criterion from step 1. Exercise the real flow, not just typecheck. Report faithfully: failures quoted exact, skipped steps named, no hedging on success ("done and verified" only when it is). If `spec-gate` wrote a holdout file for this task, dispatch a fresh subagent (spec + holdout + built artifact only, none of the build context) to evaluate it — the implementer never self-grades the holdout.
 
 ### 6. Capture → `session-capture`
 
@@ -109,3 +111,4 @@ nudge hook; the plugin ships no escalation files.
 | "Should work" as verification | Run the criterion, quote the evidence |
 | End session without capture | Learnings/decisions written before final report |
 | Run the full loop on a one-liner | Use the triviality escape hatch |
+| Grade your own spec, verify against scenarios you wrote and read | `spec-gate`: independent critic + holdout evaluated by a fresh agent |

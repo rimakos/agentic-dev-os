@@ -54,8 +54,8 @@ routine dev operations.
    "Bash(rtk find *)",
    "Bash(rtk grep *)"
    ```
-5. Append the content of `modules/rtk/staleness-rules.md` to the verification
-   section of the workspace wiki `CLAUDE.md`, wrapped in the same markers:
+5. Append the content of `modules/rtk/staleness-rules.md` to the end of
+   `<workspace>/wiki/known-issues/verification.md`, wrapped in markers:
    ```
    <!-- AGENTIC-DEV-OS:BEGIN rtk -->
    ...staleness-rules.md content...
@@ -76,5 +76,5 @@ Expected output: `rtk git status`.
 2. Remove the four `Bash(rtk ...)` entries from `permissions.allow` in
    `<workspace>/.claude/settings.json`.
 3. Strip the `AGENTIC-DEV-OS:BEGIN rtk` / `END rtk` blocks from
-   `~/.claude/CLAUDE.md` and from the workspace wiki `CLAUDE.md`.
+   `~/.claude/CLAUDE.md` and from `wiki/known-issues/verification.md`.
 4. Delete `~/.claude/RTK.md` only if the manifest records `rtk_md_created: true`.

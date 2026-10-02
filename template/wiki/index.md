@@ -3,9 +3,15 @@
 Catalog of every page. One line each. Updated on every ingest / decision / feature.
 
 ## Schema & navigation
-- [CLAUDE.md](CLAUDE.md) — schema: conventions, ops, working rules
+- [CLAUDE.md](CLAUDE.md) — schema: layout, conventions, operations
 - [log.md](log.md) — append-only chronology
 - [system-map.md](system-map.md) — topology source of truth (✅/🟡/⬜ tagged)
+
+## Known issues
+- [known-issues/README.md](known-issues/README.md) — working rules by topic
+- [verification](known-issues/verification.md) — reading code and state, running things, claims, merges
+- [pr-review](known-issues/pr-review.md) — reading a PR by SHA, verifying findings
+- [repo-targeting](known-issues/repo-targeting.md) — which repo owns a change
 
 ## Repos
 <!-- one line per repo page. Example: -->

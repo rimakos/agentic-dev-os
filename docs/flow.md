@@ -19,11 +19,11 @@ Two halves:
 Nothing in here is tied to a product or domain. Skills resolve your repos, seams,
 and ticket source from `os-config.yaml`.
 
-The loop is not left to discipline: the `operating-flow` skill enforces it on any
-non-trivial task (sizing gate, then intake, subagent execution, drift check,
-verify, capture), with `task-intake`, `subagent-execute`, `verify-done`, and
-`session-capture` as its standalone phases. Onboarding a new workspace is
-`/os-init`.
+The boundaries are not left to discipline either: git writes and tracker posts
+are permission ask rules, and two once-per-session hooks remind about
+`/ticket-impact` before the first repo edit and about verification before the
+first wiki claim. Planning, delegating and verifying are left to the model,
+which does them on its own. Onboarding a new workspace is `/os-init`.
 
 ## The loop
 
@@ -46,15 +46,14 @@ this.
 **4. Plan.** Scoped to exactly the surfaces impact analysis flagged. The plan
 inherits the blast radius, so it does not forget the migration or the client regen.
 
-**5. Implement (subagent-driven).** Coupled tasks run in one agent; independent
-tasks fan out to parallel agents; the main agent orchestrates and drift-checks after
-each task. Never commits or pushes. The human does that.
+**5. Implement.** In the main session. Only wide, independent tracks (a broad
+search, parallel research) go to subagents. The human commits and pushes; the
+permission rules ask before any git write.
 
 **6. Review.** `/cross-repo-review` checks the diff against the stated invariant and
 touch map. `/pr-ticket-review` maps each ticket requirement to the diff (satisfied /
-partial / missing) and flags cross-repo ripple. `/cross-repo-manual-test` builds an
-invariant-anchored manual test guide. All of them read PR content by SHA, not the
-working tree, and verify every finding against the codebase before anything is
+partial / missing) and flags cross-repo ripple. Both read PR content by SHA, not
+the working tree, and verify every finding against the codebase before anything is
 posted.
 
 **7. `/ticket-testing`.** Drives the real app (Playwright MCP) and reconciles every
@@ -62,8 +61,9 @@ UI value against the read-only database. Picks existing test data; hands off to
 `/seed-test-data` when the precondition state does not exist. A fix is not done
 because it compiles. Never modifies the DB, never posts, never commits.
 
-**8. Capture.** `/wrap` runs the fixed closing checklist: corrections patched, facts
-filed to the wiki, index updated, log appended (log written last). `/goal` writes a
+**8. Capture.** `/wrap` runs the closing checklist: each correction routed to a
+hook, one known-issues page, or the log; facts filed to the wiki; index updated;
+log appended last. `/goal` writes a
 compact ADR when a decision would surprise a future reader. This is the step that
 makes the loop compound.
 
@@ -80,8 +80,6 @@ next ticket, closing the loop.
   missing evidence tags, index/log drift. Fix list only, applied after you confirm.
 - `/skill-workshop` — turn a repeatable piece of work into a new skill (design
   proposal first, SKILL.md after approval).
-- `/mcp-impact` — decide, at the end of a branch, whether the change warrants MCP
-  tooling. Reuse-first, safety-gated, never writes MCP code.
 - `/seed-test-data` — seed precondition rows directly in SQL so a tester lands at the
   test point. Pairs with `/ticket-testing`.
 
@@ -90,9 +88,11 @@ next ticket, closing the loop.
 - **Evidence ranking:** production data / payloads / logs > code (file:line) > docs.
   Negative grep is never conclusive; generated clients, DI, and message
   subscriptions hide call sites.
-- **No commit/push by the agent.** Ever. The human integrates.
+- **The human commits.** Git writes ask first (`permissions.ask`); the human
+  integrates.
 - **Targeted search only.** No broad repo-wide scans.
 - **Scope discipline.** No drive-by refactors, renames, or cleanups.
 - **Read PRs by SHA,** not the checked-out branch.
-- **Failure leads to a patch.** When a skill or page steers you wrong, fix it the
-  same session so the failure cannot recur.
+- **Failure leads to a patch, in the right place.** A check a script can run goes
+  into a hook; a rule that will recur goes once into the known-issues page that
+  owns it, with its reason and without the incident story.

@@ -39,10 +39,15 @@ backup-path map). A `symlink_created` entry carries
    present and not still full of template examples (match exact whole
    template placeholder tokens only, the literal example values from
    `template/os-config.yaml`, never bare substrings: substring matches hit
-   real user filenames), hooks registered in
-   `.claude/settings.json` (drift-check + block-dangerous-git), hook scripts
-   present and executable, global `~/.claude/CLAUDE.md` contains the `core`
-   marker block.
+   real user filenames), hooks registered in `.claude/settings.json`
+   (drift-check, block-dangerous-git, ticket-impact-reminder,
+   wiki-verify-reminder), hook scripts present and executable,
+   `permissions.ask` in `.claude/settings.json` holding the git write rules
+   (`git add`, `commit`, `push`, `stash`, branch creation, plain and `rtk`),
+   `wiki/known-issues/` present, and global `~/.claude/CLAUDE.md` containing
+   the `core` marker block. A `core` block that still names `operating-flow`
+   or subagent-driven execution is a pre-0.3.0 install: report ⚠️ and point to
+   the "Upgrading from 0.2.x" steps in the plugin README.
 3. **Per-module Verify.** For each module listed in `modules`, read
    `../../modules/<name>/MODULE.md` and run its Verify section (read-only
    commands only - version checks, file existence, grep). Also confirm any

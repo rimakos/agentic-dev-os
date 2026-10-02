@@ -125,7 +125,7 @@
         <span class="clbl">Mode</span>
         <div class="seg" id="seg-mode">
           <button data-m="0" class="on">Quick (no deep)</button>
-          <button data-m="1">Deep (fan-out + verify)</button>
+          <button data-m="1">Deep (fan-out)</button>
         </div>
       </div>
       <div class="ctl">
@@ -190,14 +190,14 @@ const NODES = {
     trigger:'—', when:'After impact is understood.',
     produces:'A step-by-step implementation plan scoped to exactly the surfaces impact analysis flagged.',
     why:'The plan inherits the blast radius from ticket-impact, so it does not miss the generated client or the migration.'},
-  build: {kind:'k-step', step:'05', name:'Implement', title:'Implement (subagent-driven)',
+  build: {kind:'k-step', step:'05', name:'Implement', title:'Implement',
     trigger:'—', when:'Execution.',
-    produces:'The change. Coupled tasks run in one agent; independent tasks fan out to parallel agents; the main agent orchestrates and drift-checks.',
-    why:'Keeps the main context clean and parallelizes independent work. Never commits or pushes: the human does that.'},
+    produces:'The change, made in the main session. Only wide, independent tracks (a broad search, parallel research) go to subagents.',
+    why:'Current models plan, delegate and verify on their own. Git writes ask first through the permission rules: the human commits and pushes.'},
   review: {kind:'k-skill', step:'06', name:'<code>/cross-repo-review</code> · <code>/pr-ticket-review</code>', title:'Review the change',
-    trigger:'/cross-repo-review · /cross-repo-manual-test · /pr-ticket-review',
+    trigger:'/cross-repo-review · /pr-ticket-review',
     when:'On a diff or PR before merge.',
-    produces:'cross-repo-review checks the diff against the stated invariant and touch map. pr-ticket-review maps each ticket requirement to the diff (satisfied / partial / missing) and flags cross-repo ripple. cross-repo-manual-test builds an invariant-anchored manual test guide.',
+    produces:'cross-repo-review checks the diff against the stated invariant and touch map. pr-ticket-review maps each ticket requirement to the diff (satisfied / partial / missing) and flags cross-repo ripple.',
     why:'Reads PR content by SHA, not the working tree. Verifies every finding against the codebase and drops false positives before you post anything.'},
   test: {kind:'k-skill', step:'07', name:'<code>/ticket-testing</code>', title:'ticket-testing',
     trigger:'/ticket-testing · "test this ticket end to end"',
@@ -229,11 +229,6 @@ const NODES = {
     when:'A repeatable piece of work should become a skill.',
     produces:'A two-phase build: a compact design proposal first, then the SKILL.md after approval. Applies the same targeted-context, cost-efficient defaults as the rest of the OS.',
     why:'Deterministic beats judgment. Anything you do the same way twice should be a skill, and this builds them consistently.'},
-  mcp: {kind:'k-skill', step:'', name:'<code>/mcp-impact</code>', title:'mcp-impact',
-    trigger:'/mcp-impact · "any mcp follow-up"',
-    when:'End of a branch, to decide if the change warrants MCP tooling.',
-    produces:'A reuse-first MCP impact plan (never writes MCP code). Enforces: no business-logic duplication, no raw DB access, no secret exposure, ownership checks, approval gates.',
-    why:'Grows the team’s tool surface deliberately and safely instead of by accident.'},
   seed: {kind:'k-skill', step:'', name:'<code>/seed-test-data</code>', title:'seed-test-data',
     trigger:'/seed-test-data · "set up precondition data"',
     when:'A manual/QA test needs precondition state that does not exist to click through to.',
@@ -243,7 +238,7 @@ const NODES = {
 
 const LOOP = ['ticket','impact','spec','plan','build','review','test','capture','wiki'];
 const WIKI_OPS = ['ingest','lint','seed'];
-const META = ['workshop','mcp'];
+const META = ['workshop'];
 
 function card(id){
   const n = NODES[id];
@@ -282,16 +277,15 @@ show('impact');
 const EST = [
   {name:'ticket-impact',           inK:45, outK:6,  paths:['quick','full']},
   {name:'plan',                    inK:18, outK:5,  paths:['quick','full']},
-  {name:'implement (subagents)',   inK:60, outK:12, paths:['quick','full']},
+  {name:'implement',               inK:60, outK:12, paths:['quick','full']},
   {name:'cross-repo-review',       inK:32, outK:5,  paths:['quick','full']},
   {name:'pr-ticket-review',        inK:38, outK:5,  paths:['full']},
-  {name:'cross-repo-manual-test',  inK:24, outK:4,  paths:['full']},
   {name:'ticket-testing',          inK:50, outK:6,  paths:['full']},
   {name:'wrap',                    inK:14, outK:3,  paths:['quick','full']},
   {name:'goal',                    inK:10, outK:2,  paths:['full']},
 ];
 const DIFF = [0.35, 0.6, 1.0, 1.8, 3.0];       // trivial..epic
-const DEEP_IN = 2.1, DEEP_OUT = 1.6;           // deep mode: subagents re-read context + verify passes
+const DEEP_IN = 2.1, DEEP_OUT = 1.6;           // deep mode: subagent fan-out re-reads context
 const CACHE_FRAC = 0.45;                        // fraction of input served from prompt cache (0.1x price)
 const S = {diff:2, mode:0, path:'quick', pIn:5, pOut:25};
 
@@ -317,7 +311,7 @@ function renderEst(){
   document.getElementById('tName').textContent=(S.path==='quick'?'Quick path':'Full path')+' · '+(S.mode?'deep':'quick')+' total';
   document.getElementById('est-note').textContent=
     `Assumes ${Math.round(CACHE_FRAC*100)}% of input served from prompt cache (billed ~0.1×). `+
-    `Deep mode multiplies input ${DEEP_IN}× / output ${DEEP_OUT}× for subagent fan-out and adversarial verification. `+
+    `Deep mode multiplies input ${DEEP_IN}× / output ${DEEP_OUT}× for subagent fan-out on wide tracks. `+
     `Numbers are planning heuristics for a multi-repo team — measure your own runs with count_tokens and adjust.`;
 }
 function bindSeg(id, apply){

@@ -1,30 +1,8 @@
-# RTK - Rust Token Killer
+# RTK
 
-**Usage**: Token-optimized CLI proxy (60-90% savings on dev operations)
-
-## Meta Commands (always use rtk directly)
-
-```bash
-rtk gain              # Show token savings analytics
-rtk gain --history    # Show command usage history with savings
-rtk discover          # Analyze Claude Code history for missed opportunities
-rtk proxy <cmd>       # Execute raw command without filtering (for debugging)
-```
-
-## Installation Verification
-
-```bash
-rtk --version         # Should show: rtk X.Y.Z
-rtk gain              # Should work (not "command not found")
-which rtk             # Verify correct binary
-```
-
-⚠️ **Name collision**: If `rtk gain` fails, you may have an unrelated `rtk`
-(Rust Type Kit) installed instead. The right one is github.com/rtk-ai/rtk.
-
-## Hook-Based Usage
-
-All other commands are automatically rewritten by the Claude Code hook.
-Example: `git status` → `rtk git status` (transparent, 0 tokens overhead)
-
-Run `rtk --help` for the full command reference.
+A hook rewrites shell commands to run through `rtk`, a token-saving proxy (`git status` runs as
+`rtk git status`). The output is compressed, and some rewrites differ from the real tool:
+`rtk find` refuses compound predicates such as `-o` and `-prune`, and `rtk git diff` prints a
+summary without `+++ b/` file headers, so it is not a valid patch. When exact output matters (a
+diff saved to a file, a failure that looks wrong), run `rtk proxy <cmd>` or call the tool by
+absolute path (`/usr/bin/find`).

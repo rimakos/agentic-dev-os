@@ -7,6 +7,13 @@ technical accuracy. Levels: lite, full (default), ultra. Also ships cavecrew
 subagents (investigator/builder/reviewer) whose output comes back compressed,
 so long sessions burn less context.
 
+## Recommendation
+
+Off by default since 0.3.0. On Opus 5 and later, Anthropic's lever for response length is one
+short instruction in CLAUDE.md, and the `core` block already carries one. Caveman's session
+injection also compresses text that should read normally (drafts, PR comments). Install it only
+if you want the terse mode on top.
+
 ## Prerequisites
 
 - `node` on PATH (`node --version`) — the plugin's hooks run via node.

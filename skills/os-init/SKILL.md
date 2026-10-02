@@ -32,7 +32,7 @@ NEVER append to a shared file without markers.
 
 ```json
 {
-  "os_version": "0.2.0",
+  "os_version": "0.3.0",
   "installed_at": "YYYY-MM-DD",
   "modules": ["core", "..."],
   "modules_skipped": [{"name": "<module>", "reason": "<why>"}],
@@ -92,7 +92,7 @@ ONE AskUserQuestion round, multiSelect, listing the 6 optional modules with a
 one-line description and cost/benefit each:
 
 - `rtk` - token-saving CLI proxy for dev commands (saves tokens; adds a hook layer)
-- `caveman` - compressed subagent/communication modes (saves context; terser output)
+- `caveman` - compressed reply mode (terser output; off by default since 0.3.0, the core block already sets response length)
 - `codegraph` - semantic code graph for fast symbol lookup (faster exploration; index build cost)
 - `statusline` - Claude Code status line setup (visibility; cosmetic)
 - `plugins` - recommended plugin installs, incl. playwright + context7 (fewer wrong-API loops; more installed surface)
@@ -110,9 +110,9 @@ Rules:
   exist, merge the template content in marker-wrapped (`core`) where that
   makes sense, otherwise skip the file and report it.
 - If a workspace `.claude/settings.json` already exists, back it up first,
-  then merge the hook entries from `template/.claude/settings.json` into it
-  as discrete entries; record EACH as a `settings_entry` action
-  (pointer + value). If none exists, copy the template file and record
+  then merge the `permissions.ask` rules and hook entries from
+  `template/.claude/settings.json` into it as discrete entries; record EACH as
+  a `settings_entry` action (pointer + value). If none exists, copy the template file and record
   `file_created`.
 - Record every created file/dir in the manifest as you go.
 
@@ -120,21 +120,24 @@ Rules:
 
 Into `~/.claude/CLAUDE.md` (create if missing; if pre-existing, back up per
 the backup rule) inject ONE marker-wrapped block for module `core`, under
-~40 lines, containing:
+~25 lines, written calm (no MUST/NEVER, no incident history), containing:
 
-1. **Operating-flow trigger**: any non-trivial task (multi-step, code change,
-   2+ files, needs verification) invokes the `operating-flow` skill first;
-   user saying "quick"/"no flow" skips it; "full flow" forces it.
-2. **The 4 coding principles**: think before coding (state assumptions, ask
-   when ambiguous); simplicity first (minimum code, no speculative
-   abstractions); surgical changes (every line traces to the request, no
-   drive-by refactors); goal-driven execution (verifiable done-criterion
-   before starting, loop until met).
-3. **Execution orchestration**: subagent-driven by default; group coupled
-   tasks into one subagent, parallelize independent ones; drift check after
-   every task group.
-4. **Git hard rule**: never run git add/commit/push; end with
-   "Ready to commit: <files>" instead.
+1. **Length**: keep responses brief and plain; lead with the outcome, keep
+   caveats short, skip filler. One short instruction is the lever for
+   length on current models.
+2. **Boundaries, each with its reason**: git writes go through the
+   permission ask rules and the human runs them, so code work ends with
+   "Ready to commit: <files>"; nothing is posted to the tracker or a PR
+   unless the user asks in that turn; stop before anything hard to undo.
+3. **How to work**: say which reading you took when a request is ambiguous
+   and ask only when readings lead to different work; keep changes to what
+   was asked, in the style of the surrounding code, and mention adjacent
+   problems instead of fixing them; delegate to a subagent only for large
+   independent tracks.
+
+Leave out instructions to verify, double-check, plan, or use subagents to
+verify: current models do these on their own, and Anthropic's prompting
+guide for Opus 5 says such instructions cost quality and tokens.
 
 Record as `block_injected` (path + module `core`).
 
@@ -198,15 +201,28 @@ record a ⬜ in the wiki and move on - never stall here. Mention the optional
 out-of-scope tickets, so `ticket-impact` never pulls them into a blast
 radius.
 
+Then make the tracker's write operations ask: list the MCP server's (or
+CLI's) tools that create, update, comment, or delete, add each to
+`permissions.ask` in `<workspace>/.claude/settings.json` (MCP tools by full
+name, CLI writes as `Bash(<cli> <subcommand>:*)`), show the list before
+writing it, and record each as a `settings_entry` action. Read tools stay
+unprompted.
+
 ### 9. Smoke test
 
 Run and report a pass/fail table:
 
 - `bash .claude/hooks/drift-check.sh` executes without error
 - `block-dangerous-git.sh` blocks a fake `git push --force` tool-call payload
-  fed on stdin (expect a block), AND allows a fake plain `git push` payload
-  (by design the hook lets non-force pushes through; "the agent never
-  commits" is enforced by CLAUDE.md instruction, not mechanically)
+  fed on stdin (expect a block), and allows a fake plain `git push` payload
+  (non-force pushes pass the hook; they are gated by the `permissions.ask`
+  rules instead)
+- `jq '.permissions.ask' .claude/settings.json` lists the git write rules
+  and the tracker write tools from step 8
+- `ticket-impact-reminder.sh` returns its reminder for a fake Edit payload on
+  a repo file and nothing for a second payload with the same `session_id`;
+  `wiki-verify-reminder.sh` the same for a wiki page. Remove the marker files
+  (`$TMPDIR/claude-hook-*-<test-session-id>`) afterwards
 - each installed module's Verify section passes
 
 If caveman was installed, its verify shows "pending fresh session" here;

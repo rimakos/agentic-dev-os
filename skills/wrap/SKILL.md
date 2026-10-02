@@ -1,42 +1,38 @@
 ---
 name: wrap
-description: End-of-session memory closer for workspace work. Runs the fixed checklist that feeds the workspace wiki: corrections patched, ADR considered, facts filed, index updated, log appended. Triggers on /wrap, "log this", "wrap up", "close the session", "store what we learned".
+description: End-of-session closer for workspace work. Files what the session learned into the wiki, records the health metrics, and appends the log. Triggers on /wrap, "log this", "wrap up", "close the session", "store what we learned".
 ---
 
 # wrap
 
-End-of-session checklist. Always run ALL six steps (step 6, metrics, runs
-just before the step-5 log append). The wiki schema is `wiki/CLAUDE.md`.
-**`wiki/log.md` is ALWAYS written last**. The SessionStart drift check
-compares file mtimes against it.
+Run these in order. `wiki/log.md` is written last because the SessionStart drift check compares
+file times against it. The wiki schema is `wiki/CLAUDE.md`.
 
-## Steps
-
-1. **Corrections sweep.** Scan this session for moments the user corrected
-   you, a doc/skill misled you, or an assumption broke. Patch the offending
-   wiki page / skill / schema NOW (the failure-to-patch rule). None found, say so.
-2. **ADR check.** Did the session produce a non-obvious decision ("why this,
-   not the alternative")? Yes: invoke `/goal`. Routine: skip with one-line
-   reason. (Personal-project decisions never go here; those belong in a
-   personal vault, not the workspace wiki.)
-3. **Facts filing.** New durable knowledge (build command verified, gotcha
-   discovered, ⬜ to ✅ promotion, contradiction found): update the right
-   `wiki/repos/` / `wiki/seams/` page with evidence tags. Big source
-   artifact (PR feedback, payload, post-mortem) goes to `raw/` + note that
-   `/wiki-ingest` can process it fully.
-4. **Index.** New/repurposed pages: `index.md` lines updated.
-5. **Log LAST.** Append to `wiki/log.md`:
-   `## [YYYY-MM-DD] <op> | <session title>` + 2-4 bullets (what changed,
-   which pages). If steps 1-4 changed nothing, still append a one-bullet
-   entry (`no memory changes: <reason>`), so the drift check resets.
-6. **Metrics row (only if `metrics/system-health.tsv` exists).** Append one
-   row: today's date, op=wrap, counts of user corrections vs self-caught
-   issues this session, adr written (0/1), skills patched (0/1), wiki pages
-   touched. Do this BEFORE the step-5 log append so the log stays the last
-   write. Skip silently if the metrics module is not installed.
+1. **Corrections.** List the moments the user corrected you, a page or skill misled you, or an
+   assumption broke. For each, decide where it belongs:
+   - a check a script can do: add it to a hook or gate rather than prose;
+   - a rule that will apply again: state it once, in the one `wiki/known-issues/` page that owns
+     the topic, with its reason and without the incident story;
+   - a one-off that won't recur: note it in the log only.
+   Prefer strengthening an existing rule over adding a near-duplicate.
+2. **Decision.** If the session made a non-obvious choice ("why this, not the alternative"), run
+   `/goal` for an ADR; otherwise skip with a one-line reason. Personal-project decisions don't go
+   here.
+3. **Facts.** New durable knowledge (a verified command, a gotcha, a ⬜ to ✅ promotion, a
+   contradiction) goes on the right `wiki/repos/` or `wiki/seams/` page with its evidence tag. A
+   large source (PR feedback, payload, post-mortem) goes to `wiki/raw/`, noted for `/wiki-ingest`.
+4. **Index.** Update `wiki/index.md` for new or repurposed pages.
+5. **Health row.** Only if `metrics/system-health.tsv` exists: append one row with today's date,
+   op `wrap`, corrections the user flagged, mistakes you caught before they did, 1 if an ADR was
+   written, skill or memory files patched, and pages touched in steps 3 and 4. Self-caught rising
+   relative to user corrections is the signal that the setup is improving.
+6. **Fire rate.** Only if `metrics/skill-fire-rate.py` exists, and once per day: if today's date
+   is not yet in `metrics/skill-fire-rate.tsv`, run
+   `python3 metrics/skill-fire-rate.py 90 | tail -n +2 >> metrics/skill-fire-rate.tsv`.
+7. **Log.** Append `## [YYYY-MM-DD] <op> | <session title>` with 2 to 4 bullets (what changed,
+   which pages). If nothing changed, one bullet saying why, so the drift check resets.
 
 ## Output
 
-6 lines max: one per step, what was written where (file paths), or "skipped:
-<reason>". End with "Ready to commit: <files>" if the wiki is git-tracked.
-No git actions.
+One short line per step: what was written where, or "skipped: <reason>". If the wiki is
+git-tracked, end with "Ready to commit: <files>". No git actions.

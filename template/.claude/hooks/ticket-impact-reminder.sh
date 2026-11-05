@@ -54,6 +54,6 @@ marker="${TMPDIR:-/tmp}/claude-hook-ticket-impact-${sid:-nosession}"
 touch "$marker"
 
 cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"First repo source edit this session. If /ticket-impact has not run for this ticket, run it before going further: it routes to the repo's own rules and surfaces the hidden scope."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"First repo source edit this session. If /ticket-impact (the OS one is /agentic-dev-os:ticket-impact) has not run for this ticket, run it before going further: it routes to the repo's own rules and surfaces the hidden scope."}}
 JSON
 exit 0

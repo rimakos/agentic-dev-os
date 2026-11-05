@@ -18,6 +18,8 @@ your repos and go.
 | Skill | Fires | Does |
 |---|---|---|
 | `ticket-impact` | before any plan or code | impact-aware pre-plan + Implementation Handoff; surfaces hidden scope and likely reviewer comments; Cross-repo mini-spec when a seam is touched |
+| `pr-review` | before opening a PR | code review against the repo's own rules, its knowledge base and past reviewer patterns; every finding passes precedent, feasibility, significance and proof; names the repo's specialist reviewers still to run |
+| `address-pr-comments` | after a review | fetches open threads (Azure DevOps or GitHub), plans and makes the fixes, drafts replies, turns repeat comments into knowledge entries |
 | `cross-repo-review` | on a diff/PR | checks the diff against the stated invariant and system touch map |
 | `pr-ticket-review` | on a PR | maps each ticket requirement to the diff (satisfied / partial / missing) + cross-repo ripple |
 | `ticket-testing` | to verify behavior | drives the real app and reconciles every UI value against the read-only DB |
@@ -62,7 +64,7 @@ own, so 0.3.0 moved that ritual to `archive/` (see "What changed in 0.3.0").
 
 ## Optional modules
 
-Six add-ons under `modules/`, each with a `MODULE.md` (Prerequisites / Install /
+Seven add-ons under `modules/`, each with a `MODULE.md` (Prerequisites / Install /
 Verify / Remove). `/os-init` asks y/n for each during onboarding; `/os-doctor`
 verifies them; `/os-remove` uninstalls them cleanly via the install manifest
 (`.claude/os-manifest.json`). Anything injected into a shared file is wrapped in
@@ -76,6 +78,7 @@ verifies them; `/os-remove` uninstalls them cleanly via the install manifest
 | `statusline` | ctxline-claude status line: model, context usage, session info |
 | `plugins` | baseline plugin pack: context7 + playwright |
 | `metrics` | self-measurement TSVs (session health, PR cycle time, skill fire rate) appended by `/wrap` |
+| `repo-memory` | for a repo that already keeps a knowledge base and its own `/wrap`: hooks that make that `/wrap` happen, and a daily wrap-rate row; nothing written into the repo (installed by repo-memory mode, not asked) |
 
 ## Setup
 
@@ -99,16 +102,21 @@ Issues as ticket source.
    `/plugin marketplace add ~/agentic-dev-os`.
 
    The skills become available as `/ticket-impact`, `/wrap`, etc. across your
-   sessions.
+   sessions. Plugin skills are namespaced, so if you already have your own skill
+   with the same name (a personal `wrap`, say), the bare `/wrap` runs yours and
+   the OS one is `/agentic-dev-os:wrap`. `/os-init` lists any such clashes.
 3. Make an empty workspace folder for your project (like `~/myproject-os`),
    `cd` into it, and run `/os-init`. The wizard does the rest: asks which repos
    to symlink into the workspace, asks which optional modules you want,
    analyzes the repos and their seams, configures your ticket source, and
-   writes nothing until you approve its draft.
+   writes nothing until you approve its draft. If your `~/.claude/CLAUDE.md`
+   already holds your own rules, it asks whether the OS rules go in the
+   workspace `CLAUDE.md` instead, so the two don't compete.
 
-Fallback without plugin support: copy `skills/*` into `~/.claude/skills/`, copy the
-contents of `template/` into your workspace root, and fill in `os-config.yaml` by
-hand.
+Fallback without plugin support: copy each folder in `skills/` into
+`<workspace>/.claude/skills/` (skip any name you already have there or in
+`~/.claude/skills/`, rather than overwrite it), copy the contents of `template/`
+into your workspace root, and fill in `os-config.yaml` by hand.
 
 That is the whole "OS": the skills provide the flow, the permission rules and hooks
 hold the boundaries, and the wiki is the memory it writes to.
@@ -134,6 +142,20 @@ hold the boundaries, and the wiki is the memory it writes to.
    superpowers@claude-plugins-official`.
 6. Run `/os-doctor`.
 
+## What changed in 0.4.0
+
+- **Repo-memory mode.** When a repo already keeps its own knowledge base and `/wrap`,
+  `/os-init` uses it as the only memory instead of adding a wiki. Claude keeps starting
+  from the repo root, so the repo's settings and hooks still apply; the OS lives in a data
+  folder outside the repo and in the git-ignored `.claude/settings.local.json`. The
+  `repo-memory` module adds a session-start catch-up for sessions that ended without
+  `/wrap`, a reminder before the first commit or push, and `wrap-rate.tsv`.
+- **`pr-review`** and **`address-pr-comments`**, generic versions of the review skills
+  this OS grew up with. `/os-init` seeds `review.lessons` from the repo's past review
+  threads.
+- `/os-init` asks where the core block goes when you already have a global
+  `CLAUDE.md`, and reports skill names that clash with your own skills.
+
 ## What changed in 0.3.0
 
 Rebuilt for Opus 5.x, following Anthropic's prompting guide for Opus 5 and its
@@ -157,7 +179,7 @@ known (wiki), cut what is only told.
 ## Uninstall / rollback
 
 `/os-remove` replays the install manifest in reverse. Three modes: `--module <name>`
-drops one module, `--glue-only` strips the global CLAUDE.md block and all
+drops one module, `--glue-only` strips the core CLAUDE.md block (global or workspace) and all
 hooks/settings entries while keeping everything else, `--all` removes everything the
 manifest records. Injected blocks are removed by their marker fences, nothing
 outside them. `wiki/`, `metrics/`, and `os-config.yaml` are knowledge, not install

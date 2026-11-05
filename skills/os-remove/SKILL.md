@@ -20,12 +20,17 @@ plugin root is two levels up (`../../`).
 `<!-- AGENTIC-DEV-OS:BEGIN <module> -->` ... `<!-- AGENTIC-DEV-OS:END <module> -->`.
 Removal deletes from BEGIN to END inclusive, nothing outside.
 
-**Manifest** at `<workspace>/.claude/os-manifest.json`: `os_version`,
+**Manifest** at `<workspace>/.claude/os-manifest.json`, or `~/<project>-os/os-manifest.json` in
+repo-memory mode (`"mode": "repo"` plus `"repo"`, the repo's absolute path; no `mode` means
+`workspace`): `os_version`,
 `installed_at`, `modules` (list), `modules_skipped` (list of
 `{"name": "<module>", "reason": "<why>"}` entries), `actions` (ordered list of
 `file_created` / `dir_created` / `block_injected` / `settings_entry` /
 `plugin_installed` / `symlink_created` entries), `backups` (original-path to
-backup-path map). A `symlink_created` entry carries
+backup-path map), `core_block` (`global`, `workspace` or `skipped`: where
+the core block went; absent in pre-0.4 manifests, read it as `global`),
+`skill_collisions` (OS skill names the user also has as personal or project
+skills). A `symlink_created` entry carries
 `"path": "<workspace>/<name>"` and `"target": "<absolute repo path>"`.
 Partial installs are valid manifests - remove whatever is recorded.
 
@@ -34,7 +39,8 @@ Partial installs are valid manifests - remove whatever is recorded.
 Parse from the invocation args:
 
 - `--module <name>` - remove one module's actions only (and drop it from `modules`)
-- `--glue-only` - remove the global `~/.claude/CLAUDE.md` block(s) and ALL
+- `--glue-only` - remove the core CLAUDE.md block (wherever `core_block`
+  recorded it: global or workspace) and ALL
   hooks/settings entries; KEEP wiki, metrics, os-config
 - `--all` - everything the manifest records
 

@@ -99,3 +99,17 @@ repo_local_os:
   # - repo: api
   #   rules_dir: .ai/
   #   authoritative_for: "api-specific conventions and known issues"
+
+# -----------------------------------------------------------------------------
+# memory — where the knowledge lives. `workspace` mode: the wiki/ in this
+# workspace. `repo` mode (the repo already keeps a knowledge base): the repo's
+# folder is the only memory and its own wrap command closes sessions.
+# review — what /pr-review reads besides the repo's rules and the memory.
+# -----------------------------------------------------------------------------
+memory:
+  mode: workspace                  # workspace | repo
+  root: wiki                       # repo mode: the repo's folder, e.g. docs/knowledge
+  wrap: /wrap                      # repo mode: the repo's own session-end command
+
+review:
+  lessons: ""                      # patterns past reviewers flagged, e.g. reviews/lessons.md

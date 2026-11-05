@@ -147,6 +147,6 @@ Full methodology: `docs/flow.md`. Clickable map + cost estimator:
 
 `/os-doctor` reports the health of the install any time (scaffold, modules,
 hooks, manifest). `/os-remove` uninstalls cleanly: one module (`--module rtk`),
-just the hooks and global glue (`--glue-only`), or everything (`--all`). Your
+just the hooks and the core CLAUDE.md block (`--glue-only`), or everything (`--all`). Your
 wiki, metrics, and os-config are knowledge, not install state; they are never
 auto-deleted.

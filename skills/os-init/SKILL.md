@@ -1,6 +1,6 @@
 ---
 name: os-init
-description: Onboarding wizard that installs the agentic dev OS into the current workspace - preflight, workspace setup, module selection, scaffold, global glue, repo analysis, ticket source, smoke test. Triggers on /os-init, "set up the agentic os", "onboard this workspace", "install the dev os".
+description: Onboarding wizard that installs the agentic dev OS into the current workspace - preflight, workspace setup, module selection, scaffold, core block, repo analysis, ticket source, smoke test. Triggers on /os-init, "set up the agentic os", "onboard this workspace", "install the dev os".
 ---
 
 # os-init
@@ -18,7 +18,7 @@ install/verify/remove instructions live at `<plugin-root>/modules/<name>/MODULE.
 from this skill's base directory the plugin root is two levels up (`../../`).
 
 **Markers.** Any content injected into a shared file (global `~/.claude/CLAUDE.md`,
-any settings.json, wiki/CLAUDE.md) is wrapped:
+the workspace `CLAUDE.md`, any settings.json, wiki/CLAUDE.md) is wrapped:
 
 ```
 <!-- AGENTIC-DEV-OS:BEGIN <module> -->
@@ -28,14 +28,20 @@ any settings.json, wiki/CLAUDE.md) is wrapped:
 
 NEVER append to a shared file without markers.
 
-**Manifest** at `<workspace>/.claude/os-manifest.json`:
+**Manifest** at `<workspace>/.claude/os-manifest.json`, or `~/<project>-os/os-manifest.json` in
+repo-memory mode (`"mode": "repo"` plus `"repo"`, the repo's absolute path; no `mode` means
+`workspace`):
 
 ```json
 {
-  "os_version": "0.3.0",
+  "os_version": "0.4.0",
   "installed_at": "YYYY-MM-DD",
   "modules": ["core", "..."],
   "modules_skipped": [{"name": "<module>", "reason": "<why>"}],
+  "mode": "workspace | repo",
+  "repo": "<absolute repo path, repo mode only>",
+  "core_block": "global | workspace | skipped",
+  "skill_collisions": ["<skill name the user also has as a personal or project skill>"],
   "actions": [
     {"type": "file_created", "path": "..."},
     {"type": "dir_created", "path": "..."},
@@ -65,6 +71,15 @@ what you detect). If `<workspace>/.claude/os-manifest.json` already exists:
 STOP. Report "already installed", point to `/os-doctor` (health check) and
 `/os-remove` (uninstall).
 
+Skill name collisions: list the `name:` of every `SKILL.md` under
+`~/.claude/skills/` and `<workspace>/.claude/skills/`, and compare with the
+plugin's skills (`../../skills/*/SKILL.md`). Plugin skills are namespaced, so
+both load, but a bare `/wrap` runs the user's own `wrap`, not the OS one. For
+each shared name, report it and say the OS version is called as
+`/agentic-dev-os:<name>`. Record the names in the manifest's
+`skill_collisions` (empty list when none). Never rename or delete the user's
+skills.
+
 Activation note: plugin skills are available in the CURRENT session
 immediately after `/plugin install`; only the workspace scaffold's hooks need
 a fresh `claude` launched from the workspace root (they resolve via
@@ -85,6 +100,50 @@ The pattern, stated explicitly: one workspace per project, recommended name
 written inside it. A second unrelated project gets its own workspace with its
 own wiki and os-config. If a repo is not cloned yet, pause and ask the user
 to clone it themselves (the wizard never runs git clone), then continue.
+
+**Existing knowledge base.** Look in each repo for a knowledge base the team
+already keeps: a folder with an index of fact pages (`docs/knowledge/`,
+`docs/kb/`, a wiki folder with `index.md`) and a wrap or session-end command in
+`.claude/commands/` or `.claude/skills/`. If one exists, a second wiki would be
+a second source of truth, so AskUserQuestion once:
+
+- **Use the repo's knowledge base (Recommended)**: repo-memory mode, below.
+- **Separate workspace wiki**: the normal install, for a personal wiki the
+  team does not share.
+
+Record `"mode": "repo"` or `"mode": "workspace"` in the manifest.
+
+### Repo-memory mode
+
+Claude keeps starting from the repo root, so the repo's own `CLAUDE.md`,
+settings, deny rules and hooks keep applying. Nothing tracked in the repo is
+written. The OS lives in a data folder outside it, `~/<project>-os/`, and in
+the repo's git-ignored `.claude/settings.local.json`. Check that file is
+ignored (`git check-ignore -q`) before going on; if it is not, stop and say so.
+Each later step changes like this:
+
+- **Manifest, config and backups** go in the data folder (a `.pre-os.bak`
+  next to a repo file would be an untracked file in the repo): `os-manifest.json` with
+  `"repo": "<absolute repo path>"`, `os-config.yaml` with `memory.root` set to
+  the knowledge folder and `memory.wrap` to the repo's wrap command.
+- **3. Modules:** `repo-memory` is always on. `metrics` is not offered (its
+  health rows belong to a workspace wiki); `repo-memory` keeps its own trial
+  numbers.
+- **4. Scaffold:** copy nothing from `template/` into the repo. Merge the
+  template's git-write `permissions.ask` rules into `settings.local.json`.
+  Skip `block-dangerous-git` if the repo already has its own guard hook.
+- **5. Core block:** a workspace block would land in the repo's committed
+  `CLAUDE.md`, so offer only Global and Skip. Recommend Skip when the repo's
+  own instructions already cover length and boundaries.
+- **7. Repo analysis:** write no wiki. Read the last 50 merged PRs' human
+  review threads through the PR host's CLI or MCP (skip with ⬜ if neither
+  answers) and draft `<data>/reviews/lessons.md`: one line per pattern a
+  reviewer flagged more than once, with the PR numbers. Set `review.lessons`
+  to it; `/pr-review` reads it. Present the draft before writing.
+- **9. Smoke test:** run `repo-memory`'s Verify instead of the wiki hooks, and
+  confirm `git status` in the repo shows no change.
+- **10. Close:** no `log.md`; the repo's own `/wrap` is the session closer.
+  Tell the user to run it as usual: the hooks only remind.
 
 ### 3. Module selection
 
@@ -116,10 +175,22 @@ Rules:
   `file_created`.
 - Record every created file/dir in the manifest as you go.
 
-### 5. Global glue (core)
+### 5. Core block (core)
 
-Into `~/.claude/CLAUDE.md` (create if missing; if pre-existing, back up per
-the backup rule) inject ONE marker-wrapped block for module `core`, under
+Pick where the block goes. Read `~/.claude/CLAUDE.md`. If it is missing, or
+holds nothing outside `AGENTIC-DEV-OS` markers, the block goes there. If it
+already has the user's own instructions, two blocks would compete, so
+AskUserQuestion once:
+
+- **This workspace only (Recommended)**: inject into `<workspace>/CLAUDE.md`.
+  The OS rules apply to this project and the personal global file is untouched.
+- **Global**: inject into `~/.claude/CLAUDE.md`, for every project.
+- **Skip**: the user's global file already covers length and boundaries.
+
+Record the answer as `core_block` (`workspace`, `global` or `skipped`); for
+`skipped` also add `{"name": "core-block", "reason": "<why>"}` to
+`modules_skipped`. Into the chosen file (back it up first per the backup rule
+if it pre-exists) inject ONE marker-wrapped block for module `core`, under
 ~25 lines, written calm (no MUST/NEVER, no incident history), containing:
 
 1. **Length**: keep responses brief and plain; lead with the outcome, keep
@@ -134,6 +205,9 @@ the backup rule) inject ONE marker-wrapped block for module `core`, under
    was asked, in the style of the surrounding code, and mention adjacent
    problems instead of fixing them; delegate to a subagent only for large
    independent tracks.
+4. **Skill names**, only when `skill_collisions` is not empty: one line
+   naming them, saying the OS versions are called as
+   `/agentic-dev-os:<name>` because the bare name runs the user's own skill.
 
 Leave out instructions to verify, double-check, plan, or use subagents to
 verify: current models do these on their own, and Anthropic's prompting

@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Portable agentic dev OS: ticket lifecycle skills + team knowledge wiki. Config-driven, domain-agnostic.",
-    "version": "0.4.1"
+    "version": "0.4.2"
   },
   "plugins": [
     {

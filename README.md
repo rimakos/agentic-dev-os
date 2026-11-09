@@ -142,6 +142,14 @@ hold the boundaries, and the wiki is the memory it writes to.
    superpowers@claude-plugins-official`.
 6. Run `/os-doctor`.
 
+## What changed in 0.4.2
+
+- `modules/repo-memory/setup_repo.py` installs or upgrades repo-memory in one run: data folder,
+  scripts, hook entries (replaced, never doubled), git ask rules, review lessons and, if asked, the
+  core block. It keeps the user's lessons, metrics, config and own settings.
+- **`harvest`**: files what past Claude sessions in the repo learned into its knowledge base, the
+  way its `/wrap` does, after the user picks from a list.
+
 ## What changed in 0.4.1
 
 - `repo-memory` gains the just-in-time reminders this OS runs in its own workspace, for repos

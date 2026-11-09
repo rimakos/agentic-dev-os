@@ -32,6 +32,10 @@ keep working.
 
 ## Install
 
+`setup_repo.py` in this folder does steps 1 to 3 and the upgrade rules below in one run, from the
+repo root: `python3 <plugin>/modules/repo-memory/setup_repo.py --name <project> --memory <memory>
+[--start <skill>] [--gate <path>] [--lessons <file>] [--rules yes|no]`. The steps are the reference.
+
 1. Data folder outside the repo: `~/<project>-os/` (create it, record `dir_created`). Copy
    `modules/repo-memory/wrap_check.py` and `repo_hooks.py` to `~/<project>-os/hooks/`. If the data
    folder already exists (an earlier install), refresh the two scripts and keep everything else.

@@ -1,6 +1,6 @@
 {
   "name": "agentic-dev-os",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "A portable agentic operating system for multi-repo dev teams: a ticket lifecycle (scope -> plan -> implement -> cross-repo review/test -> capture) plus a team knowledge wiki. Config-driven, domain-agnostic.",
   "author": {
     "name": "rimakos",

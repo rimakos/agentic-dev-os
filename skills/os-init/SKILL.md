@@ -34,7 +34,7 @@ repo-memory mode (`"mode": "repo"` plus `"repo"`, the repo's absolute path; no `
 
 ```json
 {
-  "os_version": "0.4.1",
+  "os_version": "0.4.2",
   "installed_at": "YYYY-MM-DD",
   "modules": ["core", "..."],
   "modules_skipped": [{"name": "<module>", "reason": "<why>"}],
@@ -120,7 +120,8 @@ settings, deny rules and hooks keep applying. Nothing tracked in the repo is
 written. The OS lives in a data folder outside it, `~/<project>-os/`, and in
 the repo's git-ignored `.claude/settings.local.json`. Check that file is
 ignored (`git check-ignore -q`) before going on; if it is not, stop and say so.
-Each later step changes like this:
+The install itself is `modules/repo-memory/setup_repo.py` (see its MODULE.md); pass
+the user's core block answer as `--rules`. Each later step changes like this:
 
 - **Manifest, config and backups** go in the data folder (a `.pre-os.bak`
   next to a repo file would be an untracked file in the repo): `os-manifest.json` with

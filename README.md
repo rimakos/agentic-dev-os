@@ -142,6 +142,13 @@ hold the boundaries, and the wiki is the memory it writes to.
    superpowers@claude-plugins-official`.
 6. Run `/os-doctor`.
 
+## What changed in 0.4.1
+
+- `repo-memory` gains the just-in-time reminders this OS runs in its own workspace, for repos
+  with their own rules: start skill before the first source edit, check before a knowledge claim,
+  claims and client-safe reread before a PR post, and the repo's word check before a push.
+- `/pr-review` finds `os-config.yaml` in repo-memory mode.
+
 ## What changed in 0.4.0
 
 - **Repo-memory mode.** When a repo already keeps its own knowledge base and `/wrap`,

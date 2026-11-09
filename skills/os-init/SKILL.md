@@ -34,7 +34,7 @@ repo-memory mode (`"mode": "repo"` plus `"repo"`, the repo's absolute path; no `
 
 ```json
 {
-  "os_version": "0.4.0",
+  "os_version": "0.4.1",
   "installed_at": "YYYY-MM-DD",
   "modules": ["core", "..."],
   "modules_skipped": [{"name": "<module>", "reason": "<why>"}],

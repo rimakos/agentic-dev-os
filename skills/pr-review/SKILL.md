@@ -19,7 +19,9 @@ own reviewers still has to run.
 
 ## 1. Load what this repo expects
 
-Read these before the diff. Skip any that does not exist.
+Read these before the diff. Skip any that does not exist. `os-config.yaml` is in the workspace's
+`.claude/`, or in repo-memory mode in the data folder whose `hooks/wrap_check.py` the repo's
+`.claude/settings.local.json` runs.
 
 - **Rules:** the repo's `CLAUDE.md` and what it imports (`AGENTS.md`), `CONTRIBUTING.md` (its pre-PR
   checklist and review section), and any doc those point to for an area the diff touches (module

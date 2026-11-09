@@ -105,7 +105,9 @@ def pre_commit(payload, repo, memory):
     open(marker, "w").close()
     note = (f"This session changed {len(edited)} file(s) and /wrap has not run. The repo asks for "
             f"knowledge pages in the same change, so suggest /wrap to the user before this "
-            f"{'push' if 'push' in command else 'commit'}, or say why there is nothing to file.")
+            f"{'push' if 'push' in command else 'commit'}, or say why there is nothing to file. "
+            f"/wrap files against the latest main: git fetch, then read origin/main's {os.path.basename(memory)} "
+            f"index, so a fact a teammate already filed updates their page instead of getting a second one.")
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
 
 

@@ -34,7 +34,7 @@ repo-memory mode (`"mode": "repo"` plus `"repo"`, the repo's absolute path; no `
 
 ```json
 {
-  "os_version": "0.4.2",
+  "os_version": "0.5.0",
   "installed_at": "YYYY-MM-DD",
   "modules": ["core", "..."],
   "modules_skipped": [{"name": "<module>", "reason": "<why>"}],
@@ -63,9 +63,11 @@ pair in `backups`.
 
 ### 1. Preflight
 
-Check and report each: `git --version` (required), `jq --version` (warn-only,
-but recommend installing it: without jq the block-dangerous-git hook falls
-back to over-blocking and settings merges are harder), workspace layout
+Check and report each: `git --version` (required), `node --version`
+(warn-only: below 22.18 the git guard runs its older shell fallback, which
+blocks fewer spellings and cannot ask), `jq --version` (warn-only,
+but recommend installing it: without jq that shell fallback
+over-blocks and settings merges are harder), workspace layout
 (current dir contains repo checkouts as subdirectories or siblings - list
 what you detect). If `<workspace>/.claude/os-manifest.json` already exists:
 STOP. Report "already installed", point to `/os-doctor` (health check) and
@@ -132,7 +134,7 @@ the user's core block answer as `--rules`. Each later step changes like this:
   numbers.
 - **4. Scaffold:** copy nothing from `template/` into the repo. Merge the
   template's git-write `permissions.ask` rules into `settings.local.json`.
-  Skip `block-dangerous-git` if the repo already has its own guard hook.
+  Skip the git guard (`modules/git-guard`) if the repo already has its own guard hook.
 - **5. Core block:** a workspace block would land in the repo's committed
   `CLAUDE.md`, so offer only Global and Skip. Recommend Skip when the repo's
   own instructions already cover length and boundaries.
@@ -163,7 +165,10 @@ Core is not asked; it always installs. If the user intends to use
 
 ### 4. Scaffold (core)
 
-Copy the CONTENTS of `<plugin-root>/template/` into the workspace root.
+Copy the CONTENTS of `<plugin-root>/template/` into the workspace root, then
+copy `guard.sh`, `guard-git.ts` and `shell-tokens.ts` from
+`<plugin-root>/modules/git-guard/` into `<workspace>/.claude/hooks/` (the git
+guard; it sits beside the template's `block-dangerous-git.sh`, its fallback).
 Rules:
 
 - Never overwrite an existing file. If `CLAUDE.md` or wiki files already
@@ -288,10 +293,11 @@ unprompted.
 Run and report a pass/fail table:
 
 - `bash .claude/hooks/drift-check.sh` executes without error
-- `block-dangerous-git.sh` blocks a fake `git push --force` tool-call payload
-  fed on stdin (expect a block), and allows a fake plain `git push` payload
-  (non-force pushes pass the hook; they are gated by the `permissions.ask`
-  rules instead)
+- `sh .claude/hooks/guard.sh` prints `"permissionDecision":"deny"` for a fake
+  `git push --force` tool-call payload fed on stdin, `"ask"` for a fake plain
+  `git push` payload and nothing for `git status` (on Node below 22.18 the
+  shell fallback runs instead: the force push exits 2 and the plain push
+  passes, gated by the `permissions.ask` rules)
 - `jq '.permissions.ask' .claude/settings.json` lists the git write rules
   and the tracker write tools from step 8
 - `ticket-impact-reminder.sh` returns its reminder for a fake Edit payload on

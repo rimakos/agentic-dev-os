@@ -20,6 +20,9 @@ workspace:
 # repos — every checkout in the workspace and what it is.
 # `type` drives build/test assumptions and which review lens applies.
 # `role` is the one-line "backend of record" / "frontend SPA" summary.
+# `verify_cmd` is the one command CI runs for the repo (lint, types, tests,
+# format check in one). /verify runs exactly this, in `path`, and nothing else
+# counts as the gate. Empty = not configured. `path` is relative to this file.
 # -----------------------------------------------------------------------------
 repos:
   - name: api
@@ -27,18 +30,21 @@ repos:
     path: ../api
     role: "Backend of record — owns the canonical data model"
     tech: ".NET"                   # free text: .NET, Node, Go, Python, ...
+    verify_cmd: ""                 # e.g. "dotnet test" or "npm run check"; copy it from the CI file
 
   - name: web
     type: frontend
     path: ../web
     role: "Customer-facing SPA — calls api via a generated client"
     tech: "React + TypeScript"
+    verify_cmd: ""
 
   - name: shared-lib
     type: shared-lib
     path: ../shared-lib
     role: "Shared package consumed by multiple repos"
     tech: "TypeScript (npm)"
+    verify_cmd: ""
 
   # Add one entry per repo. Delete the examples above.
 
@@ -73,22 +79,31 @@ seams:
 environments:
   dev:
     app_url: ""
+    # mutations: forbidden       # the git guard then blocks curl/wget writes to app_url
     db:
       readonly_connection: ""
       write_connection: ""
 
 # -----------------------------------------------------------------------------
 # conventions — team working rules the skills enforce.
+# branch / commit / ticket_pattern are checked by modules/conventions/conventions.py
+# (`branch --check`, `commit-msg --check`), so they are written here and nowhere
+# else. A pattern is literal text plus placeholders; an unknown placeholder is an
+# error. Leave a pattern empty to switch its check off.
 # -----------------------------------------------------------------------------
 conventions:
   evidence_tags: true              # every factual claim carries ✅ / 🟡 / ⬜ (see wiki/CLAUDE.md)
-  no_commit_push: true             # skills never stage/commit/push; the human does
+  no_commit_push: true             # skills never stage/commit/push; the human does (/commit only when asked)
   targeted_search_only: true       # no broad repo-wide scans; targeted lookups only
   read_pr_by_sha: true             # review skills read diffs by SHA, not the working tree
   evidence_ranking:                # what outranks what when sources disagree
     - "production data / payloads / logs"
     - "code (file:line)"
     - "docs / tickets"
+  branch: "<type>/<ticket>-<slug>"         # placeholders: <type> <ticket> <slug> (slug: lowercase, dashes)
+  branch_types: [feature, bugfix, chore, hotfix]
+  commit: "<ticket>: <message>"            # placeholders: <type> <scope> <ticket> <message>
+  ticket_pattern: "[A-Z]+-[0-9]+"          # regex for <ticket>, taken as written; e.g. "AB#[0-9]+" or "[0-9]+"
 
 # -----------------------------------------------------------------------------
 # repo_local_os — OPTIONAL. Repos that carry their own agentic rules directory

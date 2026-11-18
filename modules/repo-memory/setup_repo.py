@@ -13,13 +13,19 @@ Run from the repo root:
 
 Safe to run again: scripts are refreshed, your lessons, metrics, config and own settings are kept, and
 the hook entries pointing into the data folder are replaced, never added twice. In the repo it only
-touches the git-ignored .claude/settings.local.json, after a backup into the data folder. Another
-agentic OS found on this machine is reported and left untouched. Undo with /agentic-dev-os:os-remove.
+touches the git-ignored .claude/settings.local.json, after a backup into the data folder.
+
+An older install of this repo in another folder (its hook entries here point into it) is migrated:
+its data is copied into the new data folder, where nothing is overwritten, and its hook entries are
+removed, so no reminder fires twice. The old folder stays on disk. A data folder whose manifest names
+another repo is refused. Another agentic OS found on this machine is reported and left untouched.
+Undo with /agentic-dev-os:os-remove.
 """
 import datetime
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -86,6 +92,29 @@ if GATE and not os.path.exists(os.path.join(REPO, GATE)):
 # What is already here
 old = read_json(os.path.join(DATA, "os-manifest.json"))
 upgrading = bool(old)
+if old.get("repo") and os.path.realpath(old["repo"]) != REPO:
+    stop(f"{DATA} belongs to another repo ({old['repo']}). Nothing was changed. Pick a different --name.")
+
+# An older install of this repo in another folder: the hook entries here point into it
+settings = read_json(LOCAL)
+commands = [h.get("command", "") for groups in settings.get("hooks", {}).values()
+            for group in groups for h in group.get("hooks", [])]
+stale, own = {}, set()
+for command in commands:
+    found = re.search(r'(?:"([^"]+)|(\S+))/hooks/(?:wrap_check|repo_hooks)\.py', command)
+    if not found:
+        continue
+    written = found.group(1) or found.group(2)
+    folder = os.path.realpath(os.path.expanduser(os.path.expandvars(written)))
+    if folder == os.path.realpath(DATA):
+        own.add(written + "/hooks/")
+        continue
+    owner = read_json(os.path.join(folder, "os-manifest.json")).get("repo")
+    if owner and os.path.realpath(owner) != REPO:
+        stop(f"hook entries in .claude/settings.local.json point into {folder}, which belongs to another "
+             f"repo ({owner}). Nothing was changed. Remove those entries by hand, then run this again.")
+    stale[written + "/hooks/"] = folder
+
 others = []
 for manifest in glob.glob(os.path.join(HOME, "*", ".claude", "os-manifest.json")) + \
         glob.glob(os.path.join(HOME, "*", "*", ".claude", "os-manifest.json")) + \
@@ -108,12 +137,44 @@ for sub in ("hooks", "metrics", "reviews", "backups"):
         os.makedirs(path)
         record({"type": "dir_created", "path": path})
 
+# Migrate: copy what the older folder holds, never over a file that is already here
+moved = []
+for folder in sorted(set(stale.values())):
+    copied = []
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = [d for d in dirs if d not in ("hooks", "backups", ".git")]
+        for name in files:
+            source = os.path.join(root, name)
+            rel = os.path.relpath(source, folder)
+            target = os.path.join(DATA, rel)
+            if rel == "os-manifest.json":
+                continue
+            if not os.path.exists(target):
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                shutil.copy2(source, target)
+                if rel == "os-config.yaml":
+                    open(target, "w").write(open(source).read().replace(folder, DATA))
+                record({"type": "file_created", "path": target})
+                copied.append(rel)
+            elif name.endswith((".md", ".tsv")):
+                mine = open(target).read()
+                new = [line for line in open(source).read().splitlines()
+                       if (name.endswith(".tsv") or line.startswith("- ")) and line not in mine]
+                if new:
+                    open(target, "a").write(("" if mine.endswith("\n") else "\n") + "\n".join(new) + "\n")
+                    copied.append(f"{rel} (+{len(new)} line(s))")
+    moved.append({"from": folder, "date": datetime.date.today().isoformat(), "copied": copied,
+                  "hooks_removed": sum(prefix in c for c in commands for prefix, f in stale.items() if f == folder)})
+
 # Scripts: always refreshed from the plugin
 repo_settings = read_json(os.path.join(REPO, ".claude", "settings.json"))
 own_guard = any(g.get("matcher") == "Bash" for g in repo_settings.get("hooks", {}).get("PreToolUse", []))
 scripts = [(os.path.join(MODULE, f), "hooks/" + f) for f in ("wrap_check.py", "repo_hooks.py")]
 scripts.append((os.path.join(MODULE, "harvest_extract.py"), "harvest_extract.py"))
+scripts.append((os.path.join(PLUGIN, "modules", "conventions", "conventions.py"), "hooks/conventions.py"))
 if not own_guard:
+    # the launcher runs guard-git.ts, or block-dangerous-git.sh when Node is missing or too old
+    scripts += [(os.path.join(PLUGIN, "modules", "git-guard", f), "hooks/" + f) for f in ("guard.sh", "guard-git.ts", "shell-tokens.ts")]
     scripts.append((os.path.join(PLUGIN, "template", ".claude", "hooks", "block-dangerous-git.sh"), "hooks/block-dangerous-git.sh"))
 for source, target in scripts:
     shutil.copy(source, os.path.join(DATA, target))
@@ -134,6 +195,8 @@ else:
     record({"type": "file_created", "path": lessons})
 
 config = os.path.join(DATA, "os-config.yaml")
+OWN_WRAP = any(os.path.exists(os.path.join(REPO, ".claude", p)) for p in ("commands/wrap.md", "skills/wrap/SKILL.md"))
+WRAP = "/wrap" if OWN_WRAP else "/agentic-dev-os:wrap"
 if os.path.exists(config):
     kept.append("os-config.yaml")
 else:
@@ -146,35 +209,41 @@ repos:
 memory:
   mode: repo
   root: {MEMORY}
-  wrap: /wrap
+  wrap: {WRAP}
 review:
   lessons: {lessons}
 """)
     record({"type": "file_created", "path": config})
 
-# settings.local.json: replace our hook entries, keep everything else
+# settings.local.json: replace our hook entries and the older folder's, keep everything else
 backups = dict(old.get("backups", {}))
-settings = read_json(LOCAL)
 if os.path.exists(LOCAL):
-    label = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") if upgrading else "pre-os"
+    label = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") if upgrading or moved else "pre-os"
     backup = os.path.join(DATA, "backups", f"settings.local.json.{label}.bak")
     shutil.copy(LOCAL, backup)
-    backups.setdefault(LOCAL, backup)
+    if moved:
+        # the file as it was holds the older folder's hooks, so /os-remove must not restore it
+        backups.pop(LOCAL, None)
+        for move in moved:
+            move["settings_backup"] = backup
+    else:
+        backups.setdefault(LOCAL, backup)
 
 hooks = settings.setdefault("hooks", {})
 ours = os.path.join(DATA, "hooks") + os.sep
 for event in list(hooks):
     groups = []
     for group in hooks[event]:
-        group["hooks"] = [h for h in group.get("hooks", []) if ours not in h.get("command", "")]
+        group["hooks"] = [h for h in group.get("hooks", [])
+                          if not any(prefix in h.get("command", "") for prefix in [ours, *own, *stale])]
         if group["hooks"]:
             groups.append(group)
     hooks[event] = groups
 
 wrap, reminders = f'python3 "{ours}wrap_check.py"', f'python3 "{ours}repo_hooks.py"'
-bash = [f"{wrap} pre-commit --memory {MEMORY}", f"{reminders} outbound"]
+bash = [f"{wrap} pre-commit --memory {MEMORY}", f"{reminders} outbound", f"{reminders} commit-msg"]
 if not own_guard:
-    bash.insert(0, f'sh "{ours}block-dangerous-git.sh"')
+    bash.insert(0, f'sh "{ours}guard.sh"')
 if GATE:
     bash.append(f"{reminders} pre-push --gate {GATE}")
 edits = [f"{reminders} knowledge-edit --memory {MEMORY}"]
@@ -221,8 +290,12 @@ elif answer or sys.stdin.isatty():
 
 skipped = [{"name": "metrics", "reason": "repo mode: repo-memory keeps wrap-rate.tsv instead"}]
 if own_guard:
-    skipped.append({"name": "block-dangerous-git", "reason": "the repo has its own Bash guard hook"})
+    skipped.append({"name": "git-guard", "reason": "the repo has its own Bash guard hook"})
 modules = sorted(set(old.get("modules", [])) | {"core", "repo-memory"})
+own_skills = os.path.join(CONFIG_DIR, "skills")
+collisions = sorted(set(os.listdir(os.path.join(PLUGIN, "skills"))) & set(os.listdir(own_skills))) \
+    if os.path.isdir(own_skills) else []
+migrated = old.get("migrated", []) + moved
 manifest = {
     "os_version": VERSION,
     "installed_at": old.get("installed_at", datetime.date.today().isoformat()),
@@ -232,7 +305,8 @@ manifest = {
     "modules": modules,
     "modules_skipped": skipped,
     "core_block": core,
-    "skill_collisions": old.get("skill_collisions", []),
+    "skill_collisions": collisions,
+    "migrated": migrated,
     "actions": actions,
     "backups": backups,
 }
@@ -247,7 +321,21 @@ print(f"\n{'Upgraded' if upgrading else 'Set up'} {DATA} to agentic-dev-os {VERS
 if kept:
     print("Kept yours: " + ", ".join(kept))
 print(f"Hooks in .claude/settings.local.json: {len(names)} ({', '.join(names)}). Working rules: {core}.")
+for move in moved:
+    print(f"Migrated the older install at {move['from']}: {len(move['copied'])} file(s) brought over"
+          + (f" ({', '.join(move['copied'])})" if move["copied"] else "")
+          + f", its {move['hooks_removed']} hook entries removed (settings as they were: {move.get('settings_backup')})."
+          f" The old folder is still on disk; delete it when you are sure: {move['from']}")
+if not moved:
+    print("Nothing to migrate: no hook entry here points into another data folder."
+          + "".join(f" Migrated earlier from {e['from']}, which is still on disk and can be deleted."
+                    for e in migrated if os.path.isdir(e["from"])))
+if collisions:
+    print(f"Your own skills in {own_skills} share a name with the plugin's: {', '.join(collisions)}. /<name> runs "
+          "yours; the plugin's is /agentic-dev-os:<name>. They were left as they are: rename or delete yours to stop the overlap.")
 for other in others:
+    if os.path.realpath(other) in [e["from"] for e in migrated]:
+        continue
     print(f"Found an earlier agentic OS at {other}: left untouched. /agentic-dev-os:harvest can read its wiki.")
 print("\n" + report)
 print("git status:", status or "clean (nothing in the repo changed)")

@@ -1,6 +1,6 @@
 ---
 name: wrap
-description: End-of-session closer for workspace work. Files what the session learned into the wiki, records the health metrics, and appends the log. Triggers on /wrap, "log this", "wrap up", "close the session", "store what we learned".
+description: End-of-session closer for workspace work. Files what the session learned into the wiki, or in repo-memory mode into the repo's own knowledge base, records the health metrics, and appends the log. Triggers on /wrap, "log this", "wrap up", "close the session", "store what we learned".
 ---
 
 # wrap
@@ -31,6 +31,30 @@ file times against it. The wiki schema is `wiki/CLAUDE.md`.
    `python3 metrics/skill-fire-rate.py 90 | tail -n +2 >> metrics/skill-fire-rate.tsv`.
 7. **Log.** Append `## [YYYY-MM-DD] <op> | <session title>` with 2 to 4 bullets (what changed,
    which pages). If nothing changed, one bullet saying why, so the drift check resets.
+
+## Repo-memory mode
+
+Use this section instead of the steps above when the repo's `.claude/settings.local.json` runs
+`hooks/wrap_check.py` from a data folder outside the repo (its `os-config.yaml` says
+`memory.mode: repo`). If the repo has its own wrap command (`.claude/commands/wrap.md` or
+`.claude/skills/wrap/`), run that one and stop here. Otherwise the repo's knowledge base is the
+only memory and the repo's own rules decide where a fact goes:
+
+1. **Read the repo's rules for documents.** Its `CLAUDE.md` (which document changes when, where
+   facts live, size limits) and the README of `memory.root`. They win over anything here.
+2. **Corrections.** As step 1 above, but a rule that will apply again goes into the file the repo
+   names for rules, inside its size limit. A reviewer's comment that would apply to other diffs
+   becomes one line in `review.lessons` in the data folder, phrased as a question.
+3. **Facts.** For each thing the session confirmed by running something, pick the first home the
+   repo's rules give it (a runbook, a decision record, a catalog, a rule file). A knowledge page
+   only when none fits. Before writing, read the index at `origin/<default branch>` and update a
+   teammate's page on the same subject instead of adding one. Add or correct the index line.
+   Most sessions produce nothing here: say so and write nothing.
+4. **Checks.** Run the repo's own checks for the files you wrote (a size or link test its rules
+   name) and fix what they report. Nothing about the session itself goes into the repo: no log,
+   no metrics, no mention of this skill.
+5. **Health row.** Append to `<data>/metrics/system-health.tsv` (create it with the header
+   `date op user_correction self_caught adr skill_patched pages_touched`, tab-separated).
 
 ## Output
 

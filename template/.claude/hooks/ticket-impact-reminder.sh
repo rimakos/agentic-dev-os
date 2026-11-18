@@ -23,6 +23,11 @@ case "$tool" in
       *"sed -i"*|*'> '*|*'>>'*|*tee\ *) ;;
       *) exit 0 ;;
     esac
+    # A write through a relative path names no folder, so judge it by where the command runs.
+    case "$subject" in
+      /*|*" /"*|*" ~"*|*'>/'*|*'"/'*|*" wiki/"*|*" .claude/"*|*" metrics/"*) ;;
+      *) subject="$subject $(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)/" ;;
+    esac
     ;;
   *) exit 0 ;;
 esac

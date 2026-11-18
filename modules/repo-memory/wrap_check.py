@@ -17,7 +17,8 @@ from datetime import date
 
 WRAP = re.compile(r'<command-name>/(?:[\w-]+:)?wrap</command-name>|"skill"\s*:\s*"(?:[\w-]+:)?wrap"')
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-WRITING_BASH = re.compile(r"sed -i|\btee\b|(?<![\d&>])>>?\s*(?!&|/dev/null)[\w./~$\"']")
+WRITING_BASH = re.compile(r"sed -i|\btee\b|(?<![\d&>=-])>>?\s*(?!&|/dev/null)[\w./~$]")
+QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")  # a quoted string is one word: an arrow inside it is not a redirect
 
 
 def arg(name, default):
@@ -25,7 +26,7 @@ def arg(name, default):
 
 
 def project_dir(cwd):
-    return os.path.join(os.path.expanduser("~/.claude/projects"), re.sub(r"[^A-Za-z0-9]", "-", cwd))
+    return os.path.join(os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude"), "projects", re.sub(r"[^A-Za-z0-9]", "-", cwd))
 
 
 def scan(path, repo, memory):
@@ -50,7 +51,7 @@ def scan(path, repo, memory):
             inp = item.get("input", {})
             if item.get("name") in EDIT_TOOLS:
                 target = inp.get("file_path") or inp.get("notebook_path") or ""
-            elif item.get("name") == "Bash" and WRITING_BASH.search(inp.get("command", "")):
+            elif item.get("name") == "Bash" and WRITING_BASH.search(QUOTED.sub("Q", inp.get("command", ""))):
                 target = os.path.join(repo, "(shell edit)")
             else:
                 continue

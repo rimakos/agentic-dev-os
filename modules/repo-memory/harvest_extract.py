@@ -18,9 +18,10 @@ NOISE = re.compile(r"<(system-reminder|command-message|command-args|local-comman
 
 
 def project_dirs():
-    name = os.path.basename(REPO)
+    slug = re.sub(r"[^A-Za-z0-9]", "-", REPO)  # how Claude Code names a project folder; sub-folders add a suffix
     root = os.path.join(CONFIG_DIR, "projects")
-    return sorted(d for d in glob.glob(os.path.join(root, "*")) if name in os.path.basename(d))
+    return sorted(d for d in glob.glob(os.path.join(root, "*"))
+                  if os.path.basename(d) == slug or os.path.basename(d).startswith(slug + "-"))
 
 
 def user_text(entry):

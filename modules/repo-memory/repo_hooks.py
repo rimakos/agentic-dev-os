@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Just-in-time reminders for a repo that keeps its own rules, without writing anything into the repo.
 
-Each mode is a PreToolUse hook. A reminder fires once per session at the moment the rule matters,
+Each mode is a PreToolUse hook. A reminder fires once per session at the moment the rule matters (outbound and commit-msg: each time),
 instead of relying on a paragraph read at session start.
 
   first-edit      Write|Edit|Bash. First source edit of a session: confirm the repo's start skill ran
@@ -12,14 +12,19 @@ instead of relying on a paragraph read at session start.
                   and reread it with the repo's client-safe check, because file-based checks do not see it.
   pre-push        Bash. Before git push: runs the repo's gate (--gate tools/leak-check.sh) on the files
                   the push sends. Blocks the push (exit 2) only when the gate reports a finding.
+  commit-msg      Bash. Before git commit -m: names conventions.commit from os-config.yaml when the
+                  message's first line does not fit it. Every time, not once. Needs conventions.py
+                  (modules/conventions) next to this file. A message from -F or a heredoc is not read.
 
 Every mode except a pre-push finding exits 0, and any error inside it exits 0.
 """
-import json, os, re, subprocess, sys, tempfile
+import json, os, re, shlex, subprocess, sys, tempfile
 
-WRITING_BASH = re.compile(r"sed -i|\btee\b|(?<![\d&>])>>?\s*(?!&|/dev/null)[\w./~$\"']")
+WRITING_BASH = re.compile(r"sed -i|\btee\b|(?<![\d&>=-])>>?\s*(?!&|/dev/null)[\w./~$]")
+QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")  # a quoted string is one word: an arrow inside it is not a redirect
 OUTBOUND = re.compile(r"\baz\s+(rest|repos\s+pr\s+(create|update)|devops\s+invoke)\b|\bgh\s+pr\s+(create|comment|review)\b")
 PUSH = re.compile(r"(^|[;&|]\s*)(rtk\s+(proxy\s+)?)?git\s+push(\s|$)")
+COMMIT = re.compile(r"(^|[;&|\n]\s*)(rtk\s+(proxy\s+)?)?git\s+commit(\s|$)")
 
 
 def arg(name, default=None):
@@ -45,7 +50,7 @@ def written(payload, repo):
     if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         target = os.path.realpath(inp.get("file_path") or inp.get("notebook_path") or "")
         return os.path.relpath(target, repo) if target.startswith(repo + os.sep) else None
-    if tool == "Bash" and WRITING_BASH.search(inp.get("command", "")):
+    if tool == "Bash" and WRITING_BASH.search(QUOTED.sub("Q", inp.get("command", ""))):
         return "(shell) " + inp["command"]
     return None
 
@@ -88,11 +93,20 @@ def pre_push(payload, repo):
         return
     def git(*args):
         return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True).stdout.strip()
-    base = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}") or "origin/main"
-    files = [f for f in git("diff", "--name-only", "--diff-filter=d", f"{base}...HEAD").splitlines() if f]
+    base = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    if base:
+        files = git("diff", "--name-only", "--diff-filter=d", f"{base}...HEAD").splitlines()
+    else:  # a new branch: the files of the commits no remote branch has yet
+        files = git("log", "--name-only", "--format=", "HEAD", "--not", "--remotes").splitlines()
+    files = sorted({f for f in files if f and os.path.exists(os.path.join(repo, f))})
     if not files:
         return
-    result = subprocess.run([os.path.join(repo, gate), *files], cwd=repo, capture_output=True, text=True, timeout=50)
+    try:
+        result = subprocess.run([os.path.join(repo, gate), *files], cwd=repo, capture_output=True, text=True, timeout=50)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        say(f"{gate} could not run before this push ({type(error).__name__}), so the push is unchecked. "
+            f"Say so to the user.")
+        return
     if result.returncode == 1:
         sys.stderr.write(f"BLOCKED before push: {gate} found something in the files this push sends.\n"
                          f"{result.stdout}{result.stderr}\nFix it, then push again. The push was not run.\n")
@@ -102,12 +116,32 @@ def pre_push(payload, repo):
             f"Say so to the user.")
 
 
-MODES = {"first-edit": first_edit, "knowledge-edit": knowledge_edit, "outbound": outbound, "pre-push": pre_push}
+def commit_msg(payload, repo):
+    command = payload.get("tool_input", {}).get("command", "")
+    if payload.get("tool_name") != "Bash" or not COMMIT.search(command):
+        return
+    words = shlex.split(command)
+    words = words[words.index("commit"):]
+    message = next((words[i + 1] for i, w in enumerate(words[:-1]) if w == "--message" or re.fullmatch("-[a-z]*m", w)), "")
+    if not message or "$(" in message or "`" in message:
+        return
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path[:0] = [here, os.path.join(os.path.dirname(here), "conventions")]
+    import conventions
+    rules = conventions.read_config(conventions.find_config(repo))[1]
+    failed = conventions.mismatch("commit", message.split("\n")[0], rules)
+    if failed:
+        say(f"This commit message does not fit the team's pattern in os-config.yaml, conventions.commit: "
+            f"{rules['commit']} ({failed}). Rewrite the first line to fit before committing.")
+
+
+MODES = {"first-edit": first_edit, "knowledge-edit": knowledge_edit, "outbound": outbound, "pre-push": pre_push,
+         "commit-msg": commit_msg}
 
 if __name__ == "__main__":
     try:
         payload = json.load(sys.stdin)
-        repo = os.path.realpath(payload.get("cwd") or os.getcwd())
+        repo = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd())
         MODES[sys.argv[1]](payload, repo)
     except SystemExit:
         raise

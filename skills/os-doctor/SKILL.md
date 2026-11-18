@@ -47,8 +47,10 @@ skills). A `symlink_created` entry carries
    template placeholder tokens only, the literal example values from
    `template/os-config.yaml`, never bare substrings: substring matches hit
    real user filenames), hooks registered in `.claude/settings.json`
-   (drift-check, block-dangerous-git, ticket-impact-reminder,
-   wiki-verify-reminder), hook scripts present and executable,
+   (drift-check, the git guard `guard.sh`, ticket-impact-reminder,
+   wiki-verify-reminder), hook scripts present and executable (the guard
+   needs `guard.sh`, `guard-git.ts`, `shell-tokens.ts` and its fallback
+   `block-dangerous-git.sh`),
    `permissions.ask` in `.claude/settings.json` holding the git write rules
    (`git add`, `commit`, `push`, `stash`, branch creation, plain and `rtk`),
    `wiki/known-issues/` present, and the `core` marker block in the file
@@ -72,6 +74,11 @@ skills). A `symlink_created` entry carries
    action, verify the path is still a symlink AND its target resolves.
 5. **Wiki drift.** Flag wiki files with mtime newer than `wiki/log.md`
    (edits not closed out by a log entry - suggest `/wrap`).
+6. **Knowledge base health.** Run `python3 ../../modules/doctor/kb_health.py` and report each row
+   it prints as its own table row (`ok` ✅, `warn` ⚠️, `fail` ❌, its fix hint as the hint).
+   Workspace mode: `--root <workspace>/wiki --log <workspace>/wiki/log.md`. Repo-memory mode:
+   `--root <repo>/<memory.root>` with `memory.root` from `os-config.yaml` in the data folder,
+   no `--log`, and `--index <file>` when the index is not `<memory.root>/index.md`.
 
 ## Output
 

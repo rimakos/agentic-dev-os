@@ -142,6 +142,42 @@ hold the boundaries, and the wiki is the memory it writes to.
    superpowers@claude-plugins-official`.
 6. Run `/os-doctor`.
 
+## What changed in 0.5.0
+
+Deterministic work moved out of prose and into scripts with tests. Several of these ideas, and
+the git guard's code, come from the AutopilotOS kit, used with its author's permission.
+
+- **Git guard** (`modules/git-guard`): a PreToolUse hook that parses each Bash command the way a
+  shell would, through `&&`, pipes, `sh -c`, `env`/`rtk` wrappers and `git -C`, then decides.
+  Destructive git (force push in any spelling, `reset --hard`, `clean -f`, `branch -D`,
+  `checkout .`) is denied. Push, add, commit, stash, new branches, `rebase` and `commit --amend`
+  ask first. Everything else passes, including text that only mentions those commands. It needs
+  Node 22.18+ and no packages, and falls back to the older regex guard when Node is missing.
+- **One real gate.** `/verify` runs each repo's `verify_cmd` from `os-config.yaml`, the one
+  command its CI runs. A lint or type-check picked on the spot does not count.
+- **Conventions in config only.** Branch and commit shapes live in `os-config.yaml`
+  (`conventions.branch`, `conventions.commit`, `ticket_pattern`).
+  `modules/conventions/conventions.py` builds a branch name and checks names and messages, and
+  `/commit` will not commit until both checks pass. In repo-memory mode a hook reminds Claude of
+  the commit pattern before a `git commit -m` that does not fit it.
+- **`/pr`** opens or updates a pull request on Azure DevOps or GitHub. It always prints a preview
+  (title, branches, ticket, body, the exact command) and sends only after you approve it. It
+  never pushes.
+- **Knowledge-base health.** `modules/doctor/kb_health.py` checks for pages missing from the
+  index, dead index links, orphan and stale pages, an old log and optional size limits.
+  `/os-doctor` runs it.
+- **Tests and CI.** `sh tests/run.sh` from the repo root runs every suite (Python 3 stdlib, plus
+  the Node guard suite when Node 22.18+ is installed). Each test runs the real script in a temp
+  folder with a fake HOME, so nothing touches your own files.
+
+## What changed in 0.4.3
+
+- `setup_repo.py` migrates an older install of the same repo that lives in another folder: it
+  copies that folder's lessons, metrics and config into the new data folder, removes its hook
+  entries from `.claude/settings.local.json` so no reminder fires twice, and leaves the old folder
+  on disk. A data folder whose manifest names another repo is refused, and personal skills that
+  share a name with the plugin's are listed.
+
 ## What changed in 0.4.2
 
 - `modules/repo-memory/setup_repo.py` installs or upgrades repo-memory in one run: data folder,
@@ -255,7 +291,7 @@ modules/            optional add-ons: rtk, caveman, codegraph, statusline, plugi
 template/           workspace scaffold (/os-init copies its contents to your workspace root)
   CLAUDE.md         entry point: the ticket flow, boundaries, memory layers
   os-config.yaml    repos, seams, ticket source, environments (app URL + DB connections)
-  .claude/          settings.json (ask rules) + hooks (drift-check, block-dangerous-git,
+  .claude/          settings.json (ask rules) + hooks (drift-check, git guard,
                     ticket-impact-reminder, wiki-verify-reminder)
   wiki/             CLAUDE.md schema + index/log/system-map + repo/seam templates
     known-issues/   working rules by topic (verification, pr-review, repo-targeting)

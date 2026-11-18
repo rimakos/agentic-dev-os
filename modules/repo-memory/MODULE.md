@@ -10,7 +10,7 @@ the OS adds no wiki. It adds what a written rule cannot do on its own:
   Claude offers `/wrap` for them before new work.
 - **Before the first commit, push or PR create of a session that needs one:** a once-per-session
   reminder to run `/wrap` first, so knowledge pages go into the same change.
-- **The moment a rule matters** (`repo_hooks.py`, once per session each): the first source edit
+- **The moment a rule matters** (`repo_hooks.py`, once per session each, except the PR and commit-message ones, which fire each time): the first source edit
   asks whether the repo's start skill ran; the first write into the knowledge base asks for the
   check before a claim is tagged confirmed; a PR create or comment through `az` or `gh` asks for
   each claim's check and a reread with the repo's client-safe check; a `git push` runs the repo's
@@ -65,6 +65,25 @@ repo root: `python3 <plugin>/modules/repo-memory/setup_repo.py --name <project> 
    nothing is listed twice. Record each as a `settings_entry` action with `path` set to the local
    settings file.
 3. `mkdir -p <data>/metrics`.
+
+### An older install in another folder
+
+`setup_repo.py` treats a hook entry in this repo's `settings.local.json` that runs `wrap_check.py`
+or `repo_hooks.py` from a folder other than `<data>` as an older install of the same repo, and
+migrates it in the same run:
+
+- Files in the old folder are copied into `<data>` (not its `hooks/`, `backups/` or manifest). A
+  file that already exists in `<data>` is never overwritten: a `.tsv` gains the rows it lacks and a
+  `.md` the `- ` lines it lacks.
+- The old folder's hook entries are removed, after the usual backup into `<data>/backups/`. That
+  backup is left out of the manifest's `backups`, so a later remove does not bring the old hooks back.
+- The manifest gains a `migrated` entry (old folder, date, files, backup path). The old folder
+  stays on disk; the run prints its path, and it can be deleted.
+
+It stops before changing anything when `<data>`, or the folder the old hook entries point into, has
+a manifest whose `repo` is a different repo. Personal skills in `~/.claude/skills/` named like the
+plugin's are listed and recorded as `skill_collisions`, never moved. A second run finds nothing to
+migrate and says so.
 
 ## Verify
 

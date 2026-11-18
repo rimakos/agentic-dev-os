@@ -11,7 +11,7 @@ import os, re, sys, time, collections, datetime
 
 days = int(sys.argv[1]) if len(sys.argv) > 1 else 90
 slug = re.sub(r'[^A-Za-z0-9]', '-', os.getcwd())
-root = os.path.expanduser('~/.claude/projects/' + slug)
+root = os.path.join(os.environ.get('CLAUDE_CONFIG_DIR') or os.path.expanduser('~/.claude'), 'projects', slug)
 cut = time.time() - days * 86400
 skills, sessions = collections.Counter(), 0
 for dp, _, fn in os.walk(root):
